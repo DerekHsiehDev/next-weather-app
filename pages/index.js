@@ -1,5 +1,6 @@
 import Head from "next/head";
 import SearchBox from "../components/SearchBox";
+import FamousPlaces from "../components/FamousPlaces";
 
 export default function Home() {
   return (
@@ -10,7 +11,8 @@ export default function Home() {
 
       <div className="home">
         <div className="container">
-          <SearchBox />
+          <SearchBox placeholder="search for another city" />
+          <FamousPlaces />
         </div>
       </div>
     </div>

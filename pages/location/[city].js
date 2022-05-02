@@ -1,5 +1,12 @@
+import Head from "next/head";
 import React from "react";
-import cities from "../../lib/city.list.json"
+import cities from "../../lib/city.list.json";
+import TodaysWeather from "../../components/TodaysWeather";
+import moment from "moment-timezone";
+import HourlyWeather from "../../components/HourlyWeather";
+import WeeklyWeather from "../../components/WeeklyWeather";
+import SearchBox from "../../components/SearchBox";
+import Link from "next/link";
 
 // need to run this if data changes often
 export async function getServerSideProps(context) {
@@ -7,35 +14,39 @@ export async function getServerSideProps(context) {
   // api call here
   console.log(city);
 
-  if(!city) {
+  if (!city) {
     return {
       notFound: true,
-    }
+    };
   }
 
-  const res = await fetch(`https://api.openweathermap.org/data/2.5/onecall?lat=${city.coord.lat}&lon=${city.coord.lon}&appid=${process.env.API_KEY}&units=imperial&exclude=minutely`)
-  
-  const data = await res.json()
+  const res = await fetch(
+    `https://api.openweathermap.org/data/2.5/onecall?lat=${city.coord.lat}&lon=${city.coord.lon}&appid=${process.env.API_KEY}&units=imperial&exclude=minutely`
+  );
 
-  if(!data) {
+  const data = await res.json();
+
+  if (!data) {
     return {
-      notFound: true
-    } 
+      notFound: true,
+    };
   } else {
-    console.log(data)
+    console.log(data);
   }
 
-  console.log(process.env.API_KEY)
+  console.log(process.env.API_KEY);
 
   const slug = context.params.city;
 
+  const hourlyWeather = getHourlyWeather(data.hourly, data.timezone);
+
   return {
     props: {
-      slug: slug,
-      data: data,
       city: city,
       currentWeather: data.current,
-      dailyWeather: data.daily
+      dailyWeather: data.daily,
+      hourlyWeather: hourlyWeather,
+      timezone: data.timezone,
     },
   };
 }
@@ -46,45 +57,59 @@ const getCity = (param) => {
   const id = splitCity[splitCity.length - 1];
   console.log(id);
 
-  if(!id) {
+  if (!id) {
     return null;
   }
 
-  const city = cities.find(city => city.id.toString() == id);
+  const city = cities.find((city) => city.id.toString() == id);
 
-  if(city) {
-    return city
+  if (city) {
+    return city;
   } else {
-    return null
+    return null;
   }
-
 };
 
-const getHourlyWeather = (hourlyData) => {
-  const current = new Date()
+const getHourlyWeather = (hourlyData, timezone) => {
+  const endOfDay = moment().tz(timezone).endOf("day").valueOf();
 
-  current.setHours(curent.getHours(), 0, 0, 0);
+  const eodTimeStamp = Math.floor(endOfDay / 1000);
 
-  const tomororw = new Date(current);
-  tomororw.setDate(tomororw.getDate() + 1)
-  tomorrow.setHours(0,0,0,0);
+  const todayData = hourlyData.filter((data) => data.dt < eodTimeStamp);
 
-  const currentTimeStamp = Math.floor(current.getTime() / 1000)
-  const tomororwTimeStamp = Math.floor(tomororw.getTime / 1000)
-
-
-  const todayData = hourlyData.filter(data => data.dt < tomororwTimeStamp)
-  
   return todayData;
+};
 
-}
-
-export default function City({ slug, data }) {
-  // console.log(data)
+export default function City({
+  hourlyWeather,
+  data,
+  currentWeather,
+  timezone,
+  dailyWeather,
+  city,
+}) {
+  // console.log(hourlyData);
   return (
     <div>
-      <h1>city page</h1>
-      <h2>{slug}</h2>
+      <Head>
+        <title>{city.name} Weather - Next Weather App</title>
+      </Head>
+
+      <div className="page-wrapper">
+        <div className="container">
+          <Link href="/">
+            <a className="back-link">&larr; Home</a>
+          </Link>
+          <SearchBox placeholder="Search for another location.." />
+          <TodaysWeather
+            timezone={timezone}
+            city={city}
+            weather={dailyWeather[0]}
+          />
+          <HourlyWeather hourlyWeather={hourlyWeather} timezone={timezone} />
+          <WeeklyWeather weeklyWeather={dailyWeather} timezone={timezone} />
+        </div>
+      </div>
     </div>
   );
 }
